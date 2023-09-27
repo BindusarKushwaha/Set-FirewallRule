@@ -1,6 +1,8 @@
 ﻿#File location needs to be updated as per requirement...
-$FileLocation= "C:\Program files (x86)\citrix\ica client\hdxteams.exe"
-$Displayname= "HDX Overlay Teams"
+$FileLocationHDXOverlay= "C:\Program files (x86)\citrix\ica client\hdxteams.exe"
+$FileLocationHDXRTCEngine="C:\Program files (x86)\citrix\ica client\hdxrtcengine.exe"
+$DisplaynameHDXOverlay= "HDX Overlay Teams"
+$DisplaynameHDXRTCEngine="HDX RTC Engine"
 ######################################
 
 <#
@@ -12,7 +14,7 @@ DISCLAIMER ENDS
 
 <#PSScriptInfo
  
-.VERSION 1.0
+.VERSION 2.0
  
 .GUID
  
@@ -47,12 +49,12 @@ Function Write-Host()
         [Parameter(Mandatory=$true)]$Message
          )
 
-    [System.Diagnostics.EventLog]::WriteEntry("Windows Firewall HDX Overlay Teams", "$Message", "Information", 100)
+    [System.Diagnostics.EventLog]::WriteEntry("Windows Firewall HDX", "$Message", "Information", 100)
 }
 
 
 
-$currentrules=get-netfirewallrule | Where-Object{$_.DisplayName -eq $Displayname}
+$currentrules=get-netfirewallrule | Where-Object{($_.DisplayName -eq $DisplaynameHDXOverlay) -or ($_.DisplayName -eq $DisplaynameHDXRTCEngine)}
 
 If($currentrules.Count -gt 0)
 {
@@ -60,12 +62,12 @@ If($currentrules.Count -gt 0)
     {
         If($currentrule.Action -eq "Block")
         {
-            Write-Host "Rule currently configured to Block... Changing to Allow instead..."
-            $currentrules | Set-NetFirewallRule -Action Allow
+            Write-Host "$($currentrule.DisplayName) Rule currently configured to Block... Changing to Allow instead..."
+            $currentrule | Set-NetFirewallRule -Action Allow
         }
         Else
         {
-            Write-Host "This rule is set to Allow... No action needed"
+            Write-Host "$($currentrule.DisplayName) rule is set to Allow... No action needed..."
         }
     }
 }
@@ -73,9 +75,14 @@ If($currentrules.Count -gt 0)
 Else
 {
     Write-Host "No Matching rule found... Creating a new one"
-    New-NetFirewallRule -DisplayName $Displayname -Profile Any -Direction Inbound -Action Block -Program $FileLocation
+
+    Try
+    {
+        New-NetFirewallRule -DisplayName $DisplaynameHDXOverlay -Profile Any -Direction Inbound -Action Allow -Program $FileLocationHDXOverlay
+        New-NetFirewallRule -DisplayName $DisplaynameHDXRTCEngine -Profile Any -Direction Inbound -Action Allow -Program $FileLocationHDXRTCEngine
+    }
+    Catch
+    {
+        Write-host "Failed to create the Firewall Rule... $($_.Exception.Message)"
+    }
 }
-
-
-
-
